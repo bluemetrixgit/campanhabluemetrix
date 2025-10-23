@@ -164,7 +164,7 @@ with right:
             logo_img = Image.open(p)
             break
     if logo_img is not None:
-        st.image(logo_img, width=160)
+        st.image(logo_img, width=250)
 
 # ===================== LOAD DATA =====================
 if not FILE_CAMPANHA.exists():
