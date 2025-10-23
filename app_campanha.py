@@ -1,20 +1,13 @@
-# Streamlit App — Campanha NET (deploy) — v8
+# Streamlit App — Campanha NET (deploy) — v9 (ranking compacto & transparente)
 # Autor: ChatGPT ("Chico")
-# Como rodar local:
+# Como rodar:
 #   pip install streamlit pandas numpy openpyxl xlsxwriter pytz plotly pillow
-#   streamlit run app_campanha_net.py
+#   streamlit run app_campanha_net_v9.py
 #
-# Deploy:
-#   - Coloque este arquivo e os assets no repositório GitHub (Streamlit Cloud ou outro).
-#   - Garanta estes caminhos relativos (ou ajuste abaixo):
-#       ./logo.branca.png         (ou .jpg/.jpeg/.webp)
-#       ./dados/Campanha Captação.xlsx
-#       ./dados/FX Dolar.xlsx     (colunas: Date, USDBRL)
-#
-# Observação:
-#   - Se o arquivo de FX não tiver a data exata da coluna "D-1", usa o dia útil anterior.
-#   - "D-1" em qualquer rótulo vira **ontem** (America/Sao_Paulo).
-#   - Corretoras USD convertidas para BRL: XP Internacional, Pershing, Interactive Brokers, Avenue.
+# Estrutura de arquivos esperada no repositório:
+#   ./logo.branca(.png|.jpg|.jpeg|.webp)
+#   ./dados/Campanha Captação.xlsx            (aba Planilha1)
+#   ./dados/FX Dolar.xlsx                     (colunas: Date, USDBRL)
 
 from __future__ import annotations
 
@@ -37,12 +30,12 @@ PERIODO_INICIO = "30/06/2025"
 PERIODO_FIM = "10/12/2025"
 GOAL_META = 65_000_000.0
 
-# Caminhos relativos no repositório
+# Caminhos relativos
 LOGO_CANDIDATES = ["logo.branca", "logo.branca.png", "logo.branca.jpg", "logo.branca.jpeg", "logo.branca.webp"]
 FILE_CAMPANHA = Path("dados") / "Campanha Captação.xlsx"
-FILE_FX = Path("dados") / "FX Dolar.xlsx"   # Deve conter colunas: Date, USDBRL (ou Data, USDBRL)
+FILE_FX = Path("dados") / "FX Dolar.xlsx"   # colunas: Date, USDBRL
 
-# Corretoras em USD (converter para R$)
+# Corretoras em USD (converter para BRL)
 USD_BROKERS = {"XP Internacional", "Pershing", "Interactive Brokers", "Avenue"}
 
 SP_TZ = pytz.timezone("America/Sao_Paulo")
@@ -59,8 +52,9 @@ def load_logo() -> Optional[Image.Image]:
         p = Path(name)
         if p.suffix == "":
             for ext in [".png",".jpg",".jpeg",".webp"]:
-                if (p.with_suffix(ext)).exists():
-                    return Image.open(p.with_suffix(ext))
+                q = p.with_suffix(ext)
+                if q.exists():
+                    return Image.open(q)
         else:
             if p.exists():
                 return Image.open(p)
@@ -96,7 +90,6 @@ def read_fx_table(path: Path) -> Optional[pd.DataFrame]:
         date_col = next((c for c in fx.columns if c.lower() in ["date","data"]), None)
         rate_col = next((c for c in fx.columns if c.lower() in ["usdxbrl","usdbrl","cambio","rate"]), None)
         if date_col is None or rate_col is None:
-            # fallback comum
             if "Date" in fx.columns and "USDBRL" in fx.columns:
                 date_col, rate_col = "Date", "USDBRL"
             else:
@@ -109,7 +102,6 @@ def read_fx_table(path: Path) -> Optional[pd.DataFrame]:
         return None
 
 def fx_for_label(label: str, fx_table: Optional[pd.DataFrame], manual_rate: float) -> float:
-    """Converte label (data ou 'D-1') para data e busca taxa na fx_table; cai no manual se não houver tabela."""
     dt = None
     try:
         dt = pd.to_datetime(label, dayfirst=True, errors="raise").date()
@@ -127,7 +119,7 @@ def fx_for_label(label: str, fx_table: Optional[pd.DataFrame], manual_rate: floa
         return float(prior["USDBRL"].iloc[0])
     return float(row["USDBRL"].iloc[0])
 
-# ===================== UI THEME =====================
+# ===================== THEME =====================
 st.set_page_config(page_title=APP_TITLE, page_icon="🎯", layout="wide")
 st.markdown("""
     <style>
@@ -159,43 +151,72 @@ with left:
                 '<b>Premiação</b>: 1º R$ 50.000 • 2º R$ 30.000 • 3º R$ 20.000'
                 '</div>', unsafe_allow_html=True)
 with right:
-    logo_img = load_logo()
+    logo_img = None
+    for name in LOGO_CANDIDATES:
+        p = Path(name)
+        if p.suffix == "":
+            for ext in [".png",".jpg",".jpeg",".webp"]:
+                q = p.with_suffix(ext)
+                if q.exists():
+                    logo_img = Image.open(q)
+                    break
+        elif p.exists():
+            logo_img = Image.open(p)
+            break
     if logo_img is not None:
-        st.image(logo_img, width=350)
+        st.image(logo_img, width=160)
 
 # ===================== LOAD DATA =====================
-# Campanha
 if not FILE_CAMPANHA.exists():
     st.error(f"Arquivo de campanha não encontrado: {FILE_CAMPANHA}")
     st.stop()
 df = pd.read_excel(FILE_CAMPANHA, sheet_name="Planilha1")
 df.columns = [str(c).strip() for c in df.columns]
 
-# FX
-fx_table = read_fx_table(FILE_FX)
+fx_table = None
+if FILE_FX.exists():
+    fx_table = pd.read_excel(FILE_FX)
+    fx_table.columns = [str(c).strip() for c in fx_table.columns]
+    date_col = next((c for c in fx_table.columns if c.lower() in ["date","data"]), None)
+    rate_col = next((c for c in fx_table.columns if c.lower() in ["usdxbrl","usdbrl","cambio","rate"]), None)
+    if date_col and rate_col:
+        fx_table = fx_table[[date_col, rate_col]].rename(columns={date_col:"Date", rate_col:"USDBRL"})
+        fx_table["Date"] = pd.to_datetime(fx_table["Date"], errors="coerce").dt.date
+        fx_table = fx_table.dropna(subset=["Date","USDBRL"]).copy()
+    else:
+        fx_table = None
 
-# Detectar coluna atual (D-1 ou última data)
 if BASELINE_COL_STR not in df.columns:
     st.error(f"Coluna de baseline '{BASELINE_COL_STR}' não encontrada no arquivo.")
     st.stop()
 
-current_col, d1_list = detect_current_col(df.columns)
-resolved_caption = ""
-if "d-1" in current_col.lower():
-    resolved_caption = f" — 'D-1' resolvido para {(datetime.now(SP_TZ).date()-timedelta(days=1)).strftime('%d/%m/%Y')}"
+def detect_current_col(cols: List[str]) -> Tuple[str, List[str]]:
+    cols = [str(c).strip() for c in cols]
+    d1 = [c for c in cols if "d-1" in c.lower()]
+    if d1:
+        return d1[-1], d1
+    dates = []
+    for c in cols:
+        if c.count("/") == 2:
+            try:
+                pd.to_datetime(c, dayfirst=True, errors="raise")
+                dates.append(c)
+            except Exception:
+                pass
+    if dates:
+        dates = sorted(dates, key=lambda x: pd.to_datetime(x, dayfirst=True))
+        return dates[-1], []
+    return BASELINE_COL_STR, []
 
-# Obter taxas
-# Valores manuais de fallback (pode ajustar abaixo, se quiser fixar no deploy)
+current_col, d1_list = detect_current_col(df.columns)
+
+# FX
 USD_BASE_MANUAL = 5.00
 USD_CURR_MANUAL = 5.00
+usd_rate_base = fx_for_label(BASELINE_COL_STR, fx_table, USD_BASE_MANUAL)
+usd_rate_curr = fx_for_label(current_col, fx_table, USD_CURR_MANUAL)
 
-def fx_for_label_or_manual(label: str, manual: float) -> float:
-    return fx_for_label(label, fx_table, manual)
-
-usd_rate_base = fx_for_label_or_manual(BASELINE_COL_STR, USD_BASE_MANUAL)
-usd_rate_curr = fx_for_label_or_manual(current_col, USD_CURR_MANUAL)
-
-# Painel base e FX
+# Painel base
 for c in [BASELINE_COL_STR, current_col]:
     df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
 
@@ -204,6 +225,7 @@ keep = [c for c in keep if c in df.columns]
 panel = df[keep + [BASELINE_COL_STR, current_col]].copy()
 panel = panel.rename(columns={BASELINE_COL_STR:"PL_30_06_2025", current_col:"PL_Atual"})
 
+# Conversão para BRL
 is_usd = panel["Corretora"].isin(USD_BROKERS) if "Corretora" in panel.columns else False
 panel["PL_30_06_2025_BRL"] = np.where(is_usd, panel["PL_30_06_2025"] * usd_rate_base, panel["PL_30_06_2025"])
 panel["PL_Atual_BRL"] = np.where(is_usd, panel["PL_Atual"] * usd_rate_curr, panel["PL_Atual"])
@@ -246,27 +268,38 @@ with k4:
     st.markdown('<div class="metric-card"><div class="metric-title">Coluna Atual Usada</div>'
                 f'<div class="metric-value">{current_col}</div></div>', unsafe_allow_html=True)
 
-st.caption(f"FX usado — 30/06/2025: {usd_rate_base:.4f} | {current_col}: {usd_rate_curr:.4f}{resolved_caption}")
-
-# ===================== RANKING =====================
+# ===================== RANKING (Tabela primeiro, Gráfico depois) =====================
 st.markdown("### Ranking por Assessor — NET (R$)")
+
+# Tabela compacta primeiro
+page_len = st.slider("Linhas por página (ranking)", 10, 50, 20, 5)
 rank_net = (flt.groupby("Assessor", dropna=False)["Delta_BRL"]
                .sum().sort_values(ascending=False).reset_index()
                .rename(columns={"Delta_BRL":"Captação NET (R$)"}))
-
-# Gráfico com margens adequadas para nomes longos
-fig = px.bar(rank_net.sort_values("Captação NET (R$)", ascending=True),
-             x="Captação NET (R$)", y="Assessor", orientation="h",
-             title="Captação NET (R$) por Assessor (aplica filtros)")
-fig.update_layout(height=max(500, 28*len(rank_net)//1), template="plotly_dark",
-                  margin=dict(l=220, r=20, t=50, b=20), yaxis=dict(automargin=True))
-st.plotly_chart(fig, use_container_width=True)
-
-# Tabela (compacta, sem duplicar "negativos")
-page_len = st.slider("Linhas por página (ranking)", 10, 50, 20, 5)
 rank_tbl = rank_net.copy()
 rank_tbl["Captação NET (R$)"] = rank_tbl["Captação NET (R$)"].apply(format_brl)
 st.dataframe(rank_tbl, use_container_width=True, height=48 + 32*min(page_len, len(rank_tbl)))
+
+# Gráfico abaixo — compacto, fundo transparente, cor personalizada
+BLUEMETRIX_ACCENT = "#d99c3a"  # dourado da marca
+fig = px.bar(
+    rank_net.sort_values("Captação NET (R$)", ascending=True),
+    x="Captação NET (R$)", y="Assessor",
+    orientation="h",
+    title="Captação NET (R$) por Assessor (aplica filtros)",
+    color_discrete_sequence=[BLUEMETRIX_ACCENT]
+)
+fig.update_layout(
+    height=600,  # fixo e compacto
+    template="plotly_dark",
+    margin=dict(l=180, r=10, t=40, b=10),
+    yaxis=dict(automargin=True),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    bargap=0.35  # barras mais finas
+)
+fig.update_traces(marker_line_color="rgba(255,255,255,0.15)", marker_line_width=0.5)
+st.plotly_chart(fig, use_container_width=True)
 
 # ===================== DIAGNÓSTICO POR ASSESSOR =====================
 st.markdown("### Diagnóstico por Assessor (NET) — Detalhe cliente a cliente")
