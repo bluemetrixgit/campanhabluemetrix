@@ -161,7 +161,7 @@ with left:
 with right:
     logo_img = load_logo()
     if logo_img is not None:
-        st.image(logo_img, width=160)
+        st.image(logo_img, width=350)
 
 # ===================== LOAD DATA =====================
 # Campanha
