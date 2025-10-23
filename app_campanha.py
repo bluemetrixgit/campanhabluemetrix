@@ -255,10 +255,10 @@ if f_uf != "(Todas)":
 # ===================== KPIs =====================
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    st.markdown('<div class="metric-card"><div class="metric-title">PL Base (30/06/2025)</div>'
+    st.markdown('<div class="metric-card"><div class="metric-title">PL Base (30/06/2025) Participantes</div>'
                 f'<div class="metric-value">{format_brl(flt["PL_30_06_2025_BRL"].sum())}</div></div>', unsafe_allow_html=True)
 with k2:
-    st.markdown('<div class="metric-card"><div class="metric-title">PL Atual</div>'
+    st.markdown('<div class="metric-card"><div class="metric-title">PL Atual Participantes</div>'
                 f'<div class="metric-value">{format_brl(flt["PL_Atual_BRL"].sum())}</div></div>', unsafe_allow_html=True)
 with k3:
     cap_liq = flt["Delta_BRL"].sum()
