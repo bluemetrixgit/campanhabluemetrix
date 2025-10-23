@@ -265,7 +265,7 @@ with k3:
     st.markdown('<div class="metric-card"><div class="metric-title">Captação Líquida NET</div>'
                 f'<div class="metric-value">{format_brl(cap_liq)}</div></div>', unsafe_allow_html=True)
 with k4:
-    st.markdown('<div class="metric-card"><div class="metric-title">Coluna Atual Usada</div>'
+    st.markdown('<div class="metric-card"><div class="metric-title">Data Atual Usada</div>'
                 f'<div class="metric-value">{current_col}</div></div>', unsafe_allow_html=True)
 
 # ===================== RANKING (Tabela primeiro, Gráfico depois) =====================
