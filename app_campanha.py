@@ -144,8 +144,8 @@ left, right = st.columns([6,2])
 with left:
     st.markdown(f'<div class="title-hero">{APP_TITLE}</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Acompanhamento consolidado com conversão USD→BRL e D‑1 inteligente</div>', unsafe_allow_html=True)
-    st.markdown(f'<span class="badge badge-blue"><b>Período</b>: {PERIODO_INICIO} → {PERIODO_FIM}</span>', unsafe_allow_html=True)
-    st.markdown('<span class="badge badge-yellow"><b>Retrato</b>: toda <b>quarta‑feira</b></span>', unsafe_allow_html=True)
+    st.markdown(f'<span class="badge badge-blue"><b>Período de Apuração</b>: {PERIODO_INICIO} → {PERIODO_FIM}</span>', unsafe_allow_html=True)
+    st.markdown('<span class="badge badge-yellow"><b>Retrato</b>: toda <b>sexta‑feira</b></span>', unsafe_allow_html=True)
     st.markdown(f'<span class="badge badge-green"><b>Meta NET</b>: {format_brl(GOAL_META)}</span>', unsafe_allow_html=True)
     st.markdown('<div class="panel" style="margin-top:8px;">'
                 '<b>Premiação</b>: 1º R$ 50.000 • 2º R$ 30.000 • 3º R$ 20.000'
