@@ -27,7 +27,7 @@ from PIL import Image
 APP_TITLE = "Campanha de Captação — NET (R$)"
 BASELINE_COL_STR = "30/06/2025"  # baseline fixo
 PERIODO_INICIO = "30/06/2025"
-PERIODO_FIM = "10/12/2025"
+PERIODO_FIM = "15/12/2025"
 GOAL_META = 65_000_000.0
 
 # Caminhos relativos
